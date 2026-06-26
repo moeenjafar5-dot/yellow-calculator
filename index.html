@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yellow Flow Calculator</title>
+  <style>
+    :root{
+      --bg1:#fffbe0;
+      --bg2:#ffe76a;
+      --bg3:#ffc900;
+      --panel:rgba(255,255,255,.32);
+      --panel2:rgba(255,255,255,.5);
+      --text:#231b00;
+      --muted:#6d5a00;
+      --shadow: 0 18px 40px rgba(120, 90, 0, .22);
+      --accent:#ffbf00;
+      --accent2:#ffd94d;
+      --danger:#fff1a0;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,.95), transparent 22%),
+        radial-gradient(circle at top right, rgba(255,255,255,.55), transparent 18%),
+        radial-gradient(circle at bottom, #ffdf5a 0%, #ffc800 70%, #ffb700 100%);
+      overflow:hidden;
+    }
+
+    body::before{
+      content:"";
+      position:fixed;
+      inset:-80px;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(255,255,255,.65) 0 2%, transparent 3%),
+        radial-gradient(circle at 35% 70%, rgba(255,255,255,.45) 0 2%, transparent 3%),
+        radial-gradient(circle at 78% 24%, rgba(255,255,255,.5) 0 2%, transparent 3%),
+        radial-gradient(circle at 72% 80%, rgba(255,255,255,.4) 0 2%, transparent 3%);
+      opacity:.8;
+      filter: blur(.3px);
+      animation: drift 12s ease-in-out infinite alternate;
+      pointer-events:none;
+    }
+
+    @keyframes drift{
+      from{ transform:translate3d(0,0,0) scale(1); }
+      to{ transform:translate3d(10px,-12px,0) scale(1.02); }
+    }
+
+    .calculator{
+      width:min(440px, 92vw);
+      padding:18px;
+      border-radius:32px;
+      background:linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.22));
+      border:1px solid rgba(255,255,255,.55);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.65);
+      backdrop-filter: blur(16px);
+      position:relative;
+      z-index:1;
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:14px;
+      gap:12px;
+    }
+
+    .brand{
+      font-weight:900;
+      letter-spacing:.18em;
+      font-size:.78rem;
+      color:#3a2d00;
+      text-transform:uppercase;
+    }
+
+    .pill{
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(255,255,255,.45);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+      font-size:.82rem;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .display{
+      min-height:150px;
+      padding:18px;
+      border-radius:26px;
+      background:linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,.25));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      margin-bottom:16px;
+      overflow:hidden;
+    }
+
+    .expression{
+      text-align:right;
+      font-size:1rem;
+      color:var(--muted);
+      min-height:28px;
+      word-break:break-all;
+      line-height:1.4;
+    }
+
+    .result{
+      text-align:right;
+      font-size:clamp(2.1rem, 7vw, 3rem);
+      font-weight:900;
+      line-height:1.05;
+      letter-spacing:-.03em;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:12px;
+    }
+
+    button{
+      border:none;
+      outline:none;
+      border-radius:20px;
+      padding:17px 10px;
+      font-size:1.1rem;
+      font-weight:800;
+      color:var(--text);
+      background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.62));
+      box-shadow:
+        0 10px 22px rgba(120, 90, 0, .14),
+        inset 0 1px 0 rgba(255,255,255,.85);
+      cursor:pointer;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease, background .12s ease;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    button:hover{
+      transform: translateY(-2px);
+      filter:saturate(1.06);
+    }
+
+    button:active,
+    button.pressed{
+      transform: translateY(2px) scale(.985);
+      box-shadow:
+        0 5px 12px rgba(120, 90, 0, .12),
+        inset 0 1px 0 rgba(255,255,255,.72);
+    }
+
+    button.op{
+      background:linear-gradient(180deg, #ffe98a, #ffc81a);
+    }
+
+    button.equal{
+      background:linear-gradient(180deg, #ffd94d, #ffad00);
+      color:#2b1d00;
+    }
+
+    button.danger{
+      background:linear-gradient(180deg, #fff4b5, #ffe16b);
+    }
+
+    button.wide{
+      grid-column:span 2;
+    }
+
+    .history{
+      margin-top:14px;
+      padding:14px;
+      border-radius:22px;
+      background:rgba(255,255,255,.28);
+      border:1px solid rgba(255,255,255,.35);
+    }
+
+    .history h3{
+      margin:0 0 10px;
+      font-size:.88rem;
+      letter-spacing:.14em;
+      color:#4a3a00;
+    }
+
+    .history-list{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height:160px;
+      overflow:auto;
+      padding-right:2px;
+    }
+
+    .hist-item{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:10px 12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.45);
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease;
+      border:1px solid rgba(255,255,255,.35);
+    }
+
+    .hist-item:hover{
+      transform: translateX(4px);
+      background:rgba(255,255,255,.58);
+    }
+
+    .hist-left{
+      font-size:.88rem;
+      color:#4c3b00;
+      word-break:break-all;
+    }
+
+    .hist-right{
+      font-size:.95rem;
+      font-weight:900;
+      color:#201700;
+      white-space:nowrap;
+    }
+
+    .small-note{
+      color:var(--muted);
+      font-size:.85rem;
+    }
+
+    .flash{
+      animation: flash .18s ease;
+    }
+
+    @keyframes flash{
+      from{ transform:scale(.99); }
+      to{ transform:scale(1); }
+    }
+
+    @media (max-width: 420px){
+      .calculator{ padding:14px; border-radius:26px; }
+      button{ padding:15px 8px; font-size:1rem; }
+      .display{ min-height:140px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator" aria-label="Yellow flow calculator">
+    <div class="topbar">
+      <div class="brand">YELLOW FLOW CALC</div>
+      <div class="pill">Live preview • click history to reuse</div>
+    </div>
+
+    <div class="display">
+      <div id="expression" class="expression">0</div>
+      <div id="result" class="result">0</div>
+    </div>
+
+    <div class="grid" id="keys">
+      <button class="danger" data-action="ac">AC</button>
+      <button data-action="del">DEL</button>
+      <button data-action="sign">±</button>
+      <button class="op" data-value="÷">÷</button>
+
+      <button data-value="7">7</button>
+      <button data-value="8">8</button>
+      <button data-value="9">9</button>
+      <button class="op" data-value="×">×</button>
+
+      <button data-value="4">4</button>
+      <button data-value="5">5</button>
+      <button data-value="6">6</button>
+      <button class="op" data-value="-">−</button>
+
+      <button data-value="1">1</button>
+      <button data-value="2">2</button>
+      <button data-value="3">3</button>
+      <button class="op" data-value="+">+</button>
+
+      <button class="op" data-action="percent">%</button>
+      <button class="wide" data-value="0">0</button>
+      <button data-value=".">.</button>
+      <button class="equal" data-action="equals">=</button>
+    </div>
+
+    <div class="history">
+      <h3>HISTORY TAPE</h3>
+      <div id="historyList" class="history-list">
+        <div class="small-note">No calculations yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const expressionEl = document.getElementById('expression');
+    const resultEl = document.getElementById('result');
+    const historyList = document.getElementById('historyList');
+    const keys = document.getElementById('keys');
+
+    let expression = '';
+    let justEvaluated = false;
+    let history = [];
+
+    function trimNumber(n) {
+      if (!Number.isFinite(n)) return 'Error';
+      const rounded = Number(n.toFixed(10));
+      return String(rounded);
+    }
+
+    function formatOutput(n) {
+      if (!Number.isFinite(n)) return 'Error';
+      const rounded = Number(n.toFixed(10));
+      return rounded.toLocaleString('en-US', {
+        maximumFractionDigits: 10
+      });
+    }
+
+    function evaluateExpression(expr) {
+      if (!expr) return null;
+
+      let safe = expr.replace(/×/g, '*').replace(/÷/g, '/');
+      safe = safe.replace(/\s+/g, '');
+
+      // Incomplete ending like 12+, 7×, 9.
+      if (/[+\-*/.]$/.test(safe)) return null;
+
+      // Allow only calculator characters
+      if (!/^[0-9+\-*/().]+$/.test(safe)) return null;
+
+      try {
+        return Function('"use strict"; return (' + safe + ')')();
+      } catch {
+        return null;
+      }
+    }
+
+    function updateHistory() {
+      if (!history.length) {
+        historyList.innerHTML = '<div class="small-note">No calculations yet.</div>';
+        return;
+      }
+
+      historyList.innerHTML = history.map((item, idx) => `
+        <div class="hist-item" data-index="${idx}" data-expr="${encodeURIComponent(item.expr)}" data-result="${item.result}">
+          <div class="hist-left">${item.expr}</div>
+          <div class="hist-right">= ${formatOutput(item.result)}</div>
+        </div>
+      `).join('');
+    }
+
+    function render() {
+      expressionEl.textContent = expression || '0';
+
+      const preview = evaluateExpression(expression);
+
+      if (preview === null) {
+        resultEl.textContent = expression ? '…' : '0';
+      } else if (!Number.isFinite(preview)) {
+        resultEl.textContent = 'Error';
+      } else {
+        resultEl.textContent = formatOutput(preview);
+      }
+    }
+
+    function clearAll() {
+      expression = '';
+      justEvaluated = false;
+      render();
+    }
+
+    function deleteLast() {
+      if (justEvaluated) justEvaluated = false;
+      if (!expression) return;
+      expression = expression.slice(0, -1);
+      render();
+    }
+
+    function getLastChunk(expr) {
+      const m = expr.match(/[^+\-×÷]+$/);
+      return m ? m[0] : '';
+    }
+
+    function pressNumber(digit) {
+      if (justEvaluated) {
+        expression = '';
+        justEvaluated = false;
+      }
+
+      if (expression === '0') expression = digit;
+      else expression += digit;
+
+      render();
+    }
+
+    function pressDot() {
+      if (justEvaluated) {
+        expression = '';
+        justEvaluated = false;
+      }
+
+      if (!expression) {
+        expression = '0.';
+        render();
+        return;
+      }
+
+      if (expression === '-') {
+        expression = '-0.';
+        render();
+        return;
+      }
+
+      const chunk = getLastChunk(expression);
+      if (chunk.includes('.')) return;
+
+      if (/[+\-×÷]$/.test(expression)) expression += '0.';
+      else expression += '.';
+
+      render();
+    }
+
+    function pressOperator(op) {
+      if (justEvaluated) justEvaluated = false;
+
+      if (!expression) {
+        if (op === '-') expression = '-';
+        render();
+        return;
+      }
+
+      if (expression === '-') {
+        if (op === '-') return;
+        expression = '';
+        render();
+        return;
+      }
+
+      // replace trailing operator, or remove trailing dot first
+      while (expression.endsWith('.')) {
+        expression = expression.slice(0, -1);
+      }
+
+      if (/[+\-×÷]$/.test(expression)) {
+        expression = expression.slice(0, -1) + op;
+      } else {
+        expression += op;
+      }
+
+      render();
+    }
+
+    function pressSign() {
+      if (justEvaluated) justEvaluated = false;
+
+      if (!expression) {
+        expression = '-';
+        render();
+        return;
+      }
+
+      // Unwrap negative number in parentheses: 5-(-3) -> 5-3
+      const wrappedNeg = expression.match(/^(.*?)(\(-\d*\.?\d+\))$/);
+      if (wrappedNeg) {
+        const before = wrappedNeg[1];
+        const num = wrappedNeg[2].slice(2, -1); // (-3) -> 3
+        expression = before + num;
+        render();
+        return;
+      }
+
+      // Wrap last number as negative: 5-3 -> 5-(-3)
+      const plainNum = expression.match(/^(.*?)(\d*\.?\d+)$/);
+      if (plainNum) {
+        const before = plainNum[1];
+        const num = plainNum[2];
+        expression = before + '(-' + num + ')';
+        render();
+      }
+    }
+
+    function pressPercent() {
+      if (justEvaluated) justEvaluated = false;
+      if (!expression) return;
+      if (/[+\-×÷.]$/.test(expression)) return;
+
+      const wrappedNeg = expression.match(/^(.*?)(\(-\d*\.?\d+\))$/);
+      if (wrappedNeg) {
+        const before = wrappedNeg[1];
+        const num = parseFloat(wrappedNeg[2].slice(2, -1)) / 100;
+        expression = before + '(-' + trimNumber(num) + ')';
+        render();
+        return;
+      }
+
+      const plainNum = expression.match(/^(.*?)(\d*\.?\d+)$/);
+      if (plainNum) {
+        const before = plainNum[1];
+        const num = parseFloat(plainNum[2]) / 100;
+        expression = before + trimNumber(num);
+        render();
+      }
+    }
+
+    function calculate() {
+      const value = evaluateExpression(expression);
+
+      if (value === null || !Number.isFinite(value)) {
+        resultEl.textContent = 'Error';
+        expression = '';
+        justEvaluated = false;
+        render();
+        return;
+      }
+
+      history.unshift({
+        expr: expression,
+        result: value
+      });
+      history = history.slice(0, 6);
+
+      updateHistory();
+
+      expression = String(Number(value.toFixed(10)));
+      justEvaluated = true;
+      render();
+
+      resultEl.classList.remove('flash');
+      void resultEl.offsetWidth;
+      resultEl.classList.add('flash');
+    }
+
+    keys.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+
+      btn.classList.add('pressed');
+      setTimeout(() => btn.classList.remove('pressed'), 120);
+
+      const value = btn.dataset.value;
+      const action = btn.dataset.action;
+
+      if (value) {
+        if (value >= '0' && value <= '9') pressNumber(value);
+        else if (value === '.') pressDot();
+        else pressOperator(value);
+      } else if (action) {
+        if (action === 'ac') clearAll();
+        if (action === 'del') deleteLast();
+        if (action === 'sign') pressSign();
+        if (action === 'percent') pressPercent();
+        if (action === 'equals') calculate();
+      }
+    });
+
+    historyList.addEventListener('click', (e) => {
+      const item = e.target.closest('.hist-item');
+      if (!item) return;
+
+      const rawExpr = decodeURIComponent(item.dataset.expr);
+      const result = item.dataset.result;
+
+      // Reuse the result as the new input
+      expression = String(Number(parseFloat(result).toFixed(10)));
+      justEvaluated = true;
+      render();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      const k = e.key;
+
+      if ((k >= '0' && k <= '9')) {
+        pressNumber(k);
+      } else if (k === '.') {
+        pressDot();
+      } else if (k === '+' || k === '-' || k === '*' || k === '/') {
+        e.preventDefault();
+        const opMap = { '*': '×', '/': '÷', '+': '+', '-': '-' };
+        pressOperator(opMap[k]);
+      } else if (k === 'Enter' || k === '=') {
+        e.preventDefault();
+        calculate();
+      } else if (k === 'Backspace') {
+        deleteLast();
+      } else if (k === 'Escape') {
+        clearAll();
+      }
+    });
+
+    render();
+    updateHistory();
+  </script>
+</body>
+</html>
